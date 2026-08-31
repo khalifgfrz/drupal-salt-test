@@ -162,13 +162,6 @@ using the ⇅ icon) with this visibility:
 | 3     | **Salt - Homepage Event & News** | `<front>`             | Show for the listed pages     |
 | 4     | **Main page content**            | `<front>`             | **Hide** for the listed pages |
 
-## 12. Export config & database
-
-```bash
-vendor/bin/drush config:export -y
-vendor/bin/drush sql:dump --result-file=db-backup.sql
-```
-
 ## Module structure
 
 ```
@@ -180,13 +173,10 @@ web/modules/custom/salt_custom/
 ├── css/salt-custom.css
 ├── src/Plugin/Block/
 │   ├── HomepageEventNewsBlock.php      # Event + News side by side, 1 block (in use)
-│   ├── EventListBlock.php              # separate version (optional/legacy)
-│   ├── NewsListBlock.php               # separate version (optional/legacy)
 │   └── RelatedContentBlock.php         # optional; related content is already baked into node templates
 └── templates/
     ├── salt-homepage-event-news-block.html.twig
     ├── block-content--banner.html.twig
-    ├── node--event--full.html.twig     # 2-column layout + related content
-    ├── node--news--full.html.twig
-    └── (salt-event-list-block / salt-news-list-block / salt-related-content-block: legacy)
+    └── block--block-content--banner.html.twig
+    └── salt-related-content-block.html.twig
 ```
