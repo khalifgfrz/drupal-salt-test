@@ -1,0 +1,199 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Salt Custom module.
+ *
+ * Everything the test asks for under "3. Create content type" and
+ * "4. Banner Homepage" is created here programmatically, so a fresh
+ * `drush si` + `drush en salt_custom` reproduces the whole content model
+ * without any manual UI clicking.
+ */
+
+use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\node\Entity\NodeType;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\block_content\Entity\BlockContentType;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
+
+/**
+ * Implements hook_install().
+ */
+function salt_custom_install() {
+  _salt_custom_create_category_vocabulary();
+  _salt_custom_create_news_content_type();
+  _salt_custom_create_event_content_type();
+  _salt_custom_create_banner_block_type();
+}
+
+/**
+ * Creates the shared "Category" taxonomy vocabulary used by News & Event.
+ */
+function _salt_custom_create_category_vocabulary() {
+  if (!Vocabulary::load('category')) {
+    Vocabulary::create([
+      'vid' => 'category',
+      'name' => 'Category',
+      'description' => 'Shared category taxonomy for News and Event content.',
+    ])->save();
+  }
+}
+
+/**
+ * Helper: create a field storage + field instance in one call.
+ */
+function _salt_custom_add_field($entity_type, $bundle, $field_name, $label, $type, array $storage_settings = [], array $field_settings = [], $required = FALSE, $cardinality = 1) {
+  if (!FieldStorageConfig::loadByName($entity_type, $field_name)) {
+    FieldStorageConfig::create([
+      'field_name' => $field_name,
+      'entity_type' => $entity_type,
+      'type' => $type,
+      'settings' => $storage_settings,
+      'cardinality' => $cardinality,
+    ])->save();
+  }
+
+  if (!FieldConfig::loadByName($entity_type, $bundle, $field_name)) {
+    FieldConfig::create([
+      'field_name' => $field_name,
+      'entity_type' => $entity_type,
+      'bundle' => $bundle,
+      'label' => $label,
+      'required' => $required,
+      'settings' => $field_settings,
+    ])->save();
+  }
+
+  // Make sure it shows up in the default form + view displays.
+  $form_display = EntityFormDisplay::load("$entity_type.$bundle.default") ?: EntityFormDisplay::create([
+    'targetEntityType' => $entity_type,
+    'bundle' => $bundle,
+    'mode' => 'default',
+    'status' => TRUE,
+  ]);
+  $form_display->setComponent($field_name, ['type' => _salt_custom_widget_for($type)])->save();
+
+  $view_display = EntityViewDisplay::load("$entity_type.$bundle.default") ?: EntityViewDisplay::create([
+    'targetEntityType' => $entity_type,
+    'bundle' => $bundle,
+    'mode' => 'default',
+    'status' => TRUE,
+  ]);
+  $view_display->setComponent($field_name, ['type' => _salt_custom_formatter_for($type)])->save();
+}
+
+/**
+ * Reasonable default widget per field type.
+ */
+function _salt_custom_widget_for($type) {
+  $map = [
+    'text_with_summary' => 'text_textarea_with_summary',
+    'text_long' => 'text_textarea',
+    'datetime' => 'datetime_default',
+    'daterange' => 'daterange_default',
+    'image' => 'image_image',
+    'entity_reference' => 'entity_reference_autocomplete',
+    'string' => 'string_textfield',
+  ];
+  return $map[$type] ?? 'string_textfield';
+}
+
+/**
+ * Reasonable default formatter per field type.
+ */
+function _salt_custom_formatter_for($type) {
+  $map = [
+    'text_with_summary' => 'text_default',
+    'text_long' => 'text_default',
+    'datetime' => 'datetime_default',
+    'daterange' => 'daterange_default',
+    'image' => 'image',
+    'entity_reference' => 'entity_reference_label',
+    'string' => 'string',
+  ];
+  return $map[$type] ?? 'string';
+}
+
+/**
+ * "News" content type — see test spec item 3, table "News".
+ */
+function _salt_custom_create_news_content_type() {
+  if (!NodeType::load('news')) {
+    NodeType::create([
+      'type' => 'news',
+      'name' => 'News',
+      'description' => 'News article.',
+      'title_label' => 'News Title',
+    ])->save();
+  }
+
+  // News Description -> Text (Full HTML, with summary), required.
+  _salt_custom_add_field('node', 'news', 'field_news_description', 'News Description', 'text_with_summary', [], [], TRUE);
+
+  // Publish Date -> Date, required.
+  _salt_custom_add_field('node', 'news', 'field_publish_date', 'Publish Date', 'datetime', ['datetime_type' => 'date'], [], TRUE);
+
+  // Image -> File (jpg, png), not required.
+  _salt_custom_add_field('node', 'news', 'field_image', 'Image', 'image', [], ['file_extensions' => 'jpg jpeg png'], FALSE);
+
+  // Category -> Taxonomy reference, required.
+  _salt_custom_add_field('node', 'news', 'field_category', 'Category', 'entity_reference', ['target_type' => 'taxonomy_term'], ['handler_settings' => ['target_bundles' => ['category' => 'category']]], TRUE);
+}
+
+/**
+ * "Event" content type — see test spec item 3, table "Event".
+ */
+function _salt_custom_create_event_content_type() {
+  if (!NodeType::load('event')) {
+    NodeType::create([
+      'type' => 'event',
+      'name' => 'Event',
+      'description' => 'Event.',
+      'title_label' => 'Event Name',
+    ])->save();
+  }
+
+  // Event Description -> Long text, Full HTML, not required.
+  _salt_custom_add_field('node', 'event', 'field_event_description', 'Event Description', 'text_long', [], [], FALSE);
+
+  // Event Date -> Date range; end date optional is handled at the widget
+  // level (daterange_default allows an empty end value when the field
+  // itself is not flagged "required end date").
+  _salt_custom_add_field('node', 'event', 'field_event_date', 'Event Date', 'daterange', ['datetime_type' => 'date'], [], TRUE);
+
+  // Event Image -> File (jpg, png), required.
+  _salt_custom_add_field('node', 'event', 'field_event_image', 'Event Image', 'image', [], ['file_extensions' => 'jpg jpeg png'], TRUE);
+
+  // Category -> Taxonomy reference, required (shared "category" vocabulary).
+  _salt_custom_add_field('node', 'event', 'field_category', 'Category', 'entity_reference', ['target_type' => 'taxonomy_term'], ['handler_settings' => ['target_bundles' => ['category' => 'category']]], TRUE);
+}
+
+/**
+ * Editable "Banner" custom block type used on the homepage (item 4).
+ * Because it's a normal Block Content entity, a site editor can change
+ * Title / Subtitle / Image from Content > Block layout > Custom block
+ * library without touching code.
+ */
+function _salt_custom_create_banner_block_type() {
+  if (!BlockContentType::load('banner')) {
+    BlockContentType::create([
+      'id' => 'banner',
+      'label' => 'Banner',
+      'description' => 'Homepage banner: title, subtitle, image, static search box.',
+    ])->save();
+  }
+
+  _salt_custom_add_field('block_content', 'banner', 'field_banner_title', 'Title', 'string');
+  _salt_custom_add_field('block_content', 'banner', 'field_banner_subtitle', 'Subtitle', 'string');
+  _salt_custom_add_field('block_content', 'banner', 'field_banner_image', 'Banner Image', 'image', [], ['file_extensions' => 'jpg jpeg png']);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function salt_custom_uninstall() {
+  // Field/content type/vocabulary removal is left to the site builder on
+  // purpose (uninstalling shouldn't silently delete editorial content).
+}

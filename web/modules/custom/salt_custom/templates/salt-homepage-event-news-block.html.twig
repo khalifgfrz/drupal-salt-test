@@ -1,0 +1,39 @@
+{{ attach_library('salt_custom/global-styling') }}
+
+<div class="salt-homepage-row">
+  <div class="salt-homepage-col salt-homepage-col--event">
+    <h2 class="salt-section-title">Event</h2>
+    <div class="salt-cards">
+      {% for item in event_items %}
+        <a href="{{ item.url }}" class="salt-card">
+          <div class="salt-card__image">{{ item.image }}</div>
+          <div class="salt-card__body">
+            <div class="salt-card__date">{{ item.date }}</div>
+            <p class="salt-card__teaser">{{ item.teaser }}</p>
+            <span class="salt-card__detail-btn">Detail</span>
+          </div>
+        </a>
+      {% else %}
+        <p>No ongoing or upcoming events.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="salt-homepage-col salt-homepage-col--news">
+    <h2 class="salt-section-title">News</h2>
+    <div class="salt-cards">
+      {% for item in news_items %}
+        <a href="{{ item.url }}" class="salt-card">
+          <div class="salt-card__image">{{ item.image }}</div>
+          <div class="salt-card__body">
+            <div class="salt-card__date">{{ item.date }}</div>
+            <p class="salt-card__teaser">{{ item.teaser }}</p>
+            <span class="salt-card__detail-btn">Detail</span>
+          </div>
+        </a>
+      {% else %}
+        <p>No news published yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>

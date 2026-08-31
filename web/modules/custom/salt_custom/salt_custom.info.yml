@@ -1,0 +1,15 @@
+name: "Salt Custom"
+type: module
+description: "Custom module for the Salt Drupal test: creates the News/Event content types + Category vocabulary, and provides custom blocks (Homepage Banner, Event list, News list, Related content) required by the test spec."
+package: Custom
+core_version_requirement: ^9 || ^10 || ^11
+
+dependencies:
+  - drupal:node
+  - drupal:field
+  - drupal:taxonomy
+  - drupal:image
+  - drupal:datetime
+  - drupal:datetime_range
+  - drupal:text
+  - drupal:block_content

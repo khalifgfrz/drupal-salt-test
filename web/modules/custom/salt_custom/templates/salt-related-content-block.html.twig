@@ -1,0 +1,14 @@
+{{ attach_library('salt_custom/global-styling') }}
+
+{% if items %}
+  <aside class="salt-related">
+    <h3 class="salt-related__title">{{ title }}</h3>
+    {% for item in items %}
+      <a href="{{ item.url }}" class="salt-related__card">
+        <div class="salt-related__image">{{ item.image }}</div>
+        <div class="salt-related__date">{{ item.date }}</div>
+        <div class="salt-related__name">{{ item.title }}</div>
+      </a>
+    {% endfor %}
+  </aside>
+{% endif %}

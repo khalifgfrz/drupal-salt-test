@@ -1,0 +1,117 @@
+<?php
+
+/**
+ * @file
+ * Theme hooks for the Salt Custom module's block plugins.
+ */
+
+/**
+ * Implements hook_page_attachments().
+ */
+function salt_custom_page_attachments(array &$attachments) {
+  $attachments['#attached']['library'][] = 'salt_custom/global-styling';
+}
+
+/**
+ * Implements hook_theme().
+ */
+function salt_custom_theme($existing, $type, $theme, $path) {
+  return [
+    // Banner block custom twig output
+    'block_content__banner' => [
+      'render element' => 'elements',
+      'base hook' => 'block_content',
+    ],
+    // Used by EventListBlock.
+    'salt_event_list_block' => [
+      'variables' => ['items' => []],
+    ],
+    // Used by NewsListBlock.
+    'salt_news_list_block' => [
+      'variables' => ['items' => []],
+    ],
+    // Used by HomepageEventNewsBlock (Event + News in one wrapper).
+    'salt_homepage_event_news_block' => [
+      'variables' => ['event_items' => [], 'news_items' => []],
+    ],
+    // Used by RelatedContentBlock (Detail page sidebar).
+    'salt_related_content_block' => [
+      'variables' => ['items' => [], 'title' => ''],
+    ],
+  ];
+}
+
+/**
+ * Builds the render-friendly "card" array shared by the Event list, News
+ * list, and Related content blocks (image, date, trimmed teaser, link).
+ *
+ * @param \Drupal\node\NodeInterface $node
+ *   The News or Event node.
+ * @param string $image_field
+ *   Machine name of the image field on this bundle.
+ * @param string $date_field
+ *   Machine name of the date/daterange field on this bundle.
+ *
+ * @return array
+ *   Array with keys: title, url, image, date, teaser.
+ */
+function _salt_custom_build_card_item(\Drupal\node\NodeInterface $node, $image_field, $date_field) {
+  $image = NULL;
+  if ($node->hasField($image_field) && !$node->get($image_field)->isEmpty()) {
+    $image = $node->get($image_field)->view(['label' => 'hidden', 'type' => 'image', 'settings' => ['image_style' => 'medium']]);
+  }
+
+  $date_display = '';
+  if ($node->hasField($date_field) && !$node->get($date_field)->isEmpty()) {
+    $value = $node->get($date_field)->value;
+    if ($value) {
+      $date_display = \Drupal::service('date.formatter')->format(strtotime($value), 'custom', 'j F Y');
+    }
+  }
+
+  $body_field = $node->bundle() === 'event' ? 'field_event_description' : 'field_news_description';
+  $teaser = '';
+  if ($node->hasField($body_field) && !$node->get($body_field)->isEmpty()) {
+    $plain = strip_tags($node->get($body_field)->value);
+    $words = preg_split('/\s+/', trim($plain));
+    $teaser = implode(' ', array_slice($words, 0, 30)) . (count($words) > 30 ? '…' : '');
+  }
+
+  return [
+    'title' => $node->label(),
+    'url' => $node->toUrl()->toString(),
+    'image' => $image,
+    'date' => $date_display,
+    'teaser' => $teaser,
+  ];
+}
+
+/**
+ * Implements hook_theme_suggestions_block_content_alter().
+ */
+function salt_custom_theme_suggestions_block_content_alter(array &$suggestions, array $variables) {
+  /** @var \Drupal\block_content\BlockContentInterface $block_content */
+  $block_content = $variables['elements']['#block_content'] ?? NULL;
+  if ($block_content) {
+    $suggestions[] = 'block_content__' . $block_content->bundle();
+  }
+}
+
+/**
+ * Implements hook_preprocess_block().
+ */
+function salt_custom_preprocess_block(array &$variables) {
+  $homepage_half_blocks = [
+    'salt_event_list_block' => 'salt-event-half',
+    'salt_news_list_block' => 'salt-news-half',
+  ];
+
+  $plugin_id = $variables['plugin_id'] ?? '';
+  if (isset($homepage_half_blocks[$plugin_id])) {
+    $variables['attributes']['class'][] = 'salt-homepage-half';
+    $variables['attributes']['class'][] = $homepage_half_blocks[$plugin_id];
+    $variables['label'] = '';
+    $variables['configuration']['label_display'] = FALSE;
+  }
+}
+

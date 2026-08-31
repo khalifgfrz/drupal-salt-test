@@ -1,0 +1,21 @@
+{{ attach_library('salt_custom/global-styling') }}
+
+<div{{ attributes.addClass('salt-banner') }}>
+  {% if content.field_banner_image %}
+    <div class="salt-banner__image">{{ content.field_banner_image }}</div>
+  {% endif %}
+  <div class="salt-banner__content">
+    {% if content.field_banner_title %}
+      <h1 class="salt-banner__title">{{ content.field_banner_title['0'] }}</h1>
+    {% endif %}
+
+    <form class="salt-banner__search" onsubmit="return false;">
+      <input type="text" placeholder="example: salt" class="salt-banner__search-input">
+      <button type="submit" class="salt-banner__search-button">search</button>
+    </form>
+
+    {% if content.field_banner_subtitle %}
+      <div class="salt-banner__subtitle">{{ content.field_banner_subtitle['0'] }}</div>
+    {% endif %}
+  </div>
+</div>
